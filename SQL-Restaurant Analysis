@@ -1,0 +1,157 @@
+# Objective:
+
+Ginny is the owner of the Restaurant
+Ginny wants to get a some  answer of  few simple questions about his customers, especially about their:
+● visiting patterns,
+● how much money they’ve spent, and
+● which menu items are their favorite.
+She plans on using these insights to help him decide whether she should expand the existing customer loyalty program. 
+
+# Problem statement condition :
+
+The data set contains the following three tables:
+● sales
+● members
+● menu
+
+# problem statement -1: by this problem we are getting how much amount customers spend on our restaurant.
+What is the total amount each customer spent at the restaurant?
+
+   SELECT SUM(m.price) as total_amount ,s.customer_id FROM  dbo.sales as s inner
+join dbo.menu as m
+on s.product_id=m.product_id
+GROUP BY s.customer_id
+order by s.customer_id;
+
+OUTPUT:
+total_amount	customer_id
+76	A
+74	B
+36	C
+
+
+# problem staement -2: by this we get to know how many days they visited  our restaurant.
+How many days has each customer visited the restaurant?
+
+   SELECT COUNT(distinct(order_date)) as visited_days ,s.customer_id FROM  dbo.sales as s
+GROUP BY s.customer_id
+order by s.customer_id;
+
+OUTPUT:
+visited_days	customer_id
+4	A
+6	B
+2	C
+
+# Problem statement -3:
+What was the first item from the menu purchased by each customer?
+
+    WITH a_cte as(
+  SELECT s.customer_id,s.order_date,e.product_name,
+  DENSE_RANK() OVER(PARTITION BY customer_id ORDER BY order_date)as rank_first_order
+  FROM dbo.sales as s
+  join 
+  dbo.menu as e
+  on s.product_id=e.product_id)
+  SELECT customer_id,product_name FROM a_cte
+  where rank_first_order=1
+  group by customer_id,product_name
+  
+  OUTPUT:
+  customer_id	product_name
+A	curry
+A	sushi
+B	curry
+C	ramen
+
+
+#Problem statement -4:
+What is the most purchased item on the menu and how many times was it purchased by all customers?
+
+OUTPUT:
+       SELECT count(s.product_id) as most_purchased,e.product_name,s.product_id
+FROM dbo.sales as s
+join
+dbo.menu as e
+on s.product_id=e.product_id
+GROUP BY e.product_name,s.product_id
+order by most_purchased desc
+LIMIT 1
+
+#Problem statement -5:
+Which item was the most popular one for each customer?
+
+     with a_cte as
+(
+SELECT COUNT(s.product_id) as most_purchased,e.product_name,s.customer_id 
+  ,DENSE_RANK() OVER (PARTITION BY s.customer_id ORDER BY COUNT(s.product_id)desc) as rank 
+FROM dbo.sales as s
+join
+dbo.menu as e
+on s.product_id=e.product_id
+GROUP BY e.product_name,s.customer_id
+)
+SELECT most_purchased,product_name,customer_id
+FROM a_cte
+where rank=1
+
+# OUTPUT:
+most_purchased	product_name	customer_id
+3	ramen	A
+2	curry	B
+2	sushi	B
+2	ramen	B
+3	ramen	C
+
+# PROBLEM STATEMENT -6
+Which item was purchased first by the customer after they became a member?
+
+with a_cte as(
+SELECT s.product_id,s.order_date,s.customer_id,
+DENSE_RANK() OVER (PARTITION BY s.customer_id ORDER BY s.order_date desc) as rank
+FROM dbo.sales as s
+join
+dbo.members as e
+on s.customer_id=e.customer_id
+where s.order_date >= e.join_date
+order by s.customer_id,s.product_id desc )
+SELECT order_date,customer_id,me.product_name
+FROM a_cte
+join
+dbo.menu as me
+on a_cte.product_id=me.product_id
+where rank=1
+
+#OUTPUT:
+order_date	customer_id	product_name
+2021-01-11T00:00:00.000Z	A	ramen
+2021-02-01T00:00:00.000Z	B	ramen
+
+
+#Problem statement-7:
+Which item was purchased right before the customer became a member?
+
+with a_cte as(
+SELECT s.product_id,s.order_date,s.customer_id,
+DENSE_RANK() OVER (PARTITION BY s.customer_id ORDER BY s.order_date desc) as rank
+FROM dbo.sales as s
+join
+dbo.members as e
+on s.customer_id=e.customer_id
+where s.order_date < e.join_date
+order by s.customer_id,s.product_id desc )
+SELECT order_date,customer_id,me.product_name
+FROM a_cte
+join
+dbo.menu as me
+on a_cte.product_id=me.product_id
+where rank=1
+
+#OUTPUT:
+order_date	customer_id	product_name
+2021-01-01T00:00:00.000Z	A	curry
+2021-01-01T00:00:00.000Z	A	sushi
+2021-01-04T00:00:00.000Z	B	sushi
+
+
+
