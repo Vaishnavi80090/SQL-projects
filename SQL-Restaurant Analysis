@@ -1,11 +1,8 @@
 # Objective:
 
 Ginny is the owner of the Restaurant
-Ginny wants to get a some  answer of  few simple questions about his customers, especially about their:
-● visiting patterns,
-● how much money they’ve spent, and
-● which menu items are their favorite.
-She plans on using these insights to help him decide whether she should expand the existing customer loyalty program. 
+Ginny has enlarged his Restaurant services by adding membership program for his loyal customer 
+Now He wants to know is it this membership program proftable for his Restaurant or not?
 
 # Problem statement condition :
 
@@ -14,36 +11,93 @@ The data set contains the following three tables:
 ● members
 ● menu
 
-# problem statement -1: by this problem we are getting how much amount customers spend on our restaurant.
-What is the total amount each customer spent at the restaurant?
+#PROBLEM STATEMENT-1
+How much customer visit before getting membership?
 
-   SELECT SUM(m.price) as total_amount ,s.customer_id FROM  dbo.sales as s inner
-join dbo.menu as m
-on s.product_id=m.product_id
+SELECT COUNT(DISTINCT order_date) as customer_visit_before_membership,
+s.customer_id
+FROM dbo.sales as s
+join 
+dbo.members as me
+on s.customer_id = me.customer_id
+where order_date < join_date
 GROUP BY s.customer_id
-order by s.customer_id;
 
-OUTPUT:
-total_amount	customer_id
-76	A
-74	B
-36	C
+#OUTPUT:
+customer_visit_before_membership	customer_id
+1	A
+3	B
 
+# PROBLEM STATEMENT-2
+How much customer visit after getting membership?
 
-# problem staement -2: by this we get to know how many days they visited  our restaurant.
-How many days has each customer visited the restaurant?
-
-   SELECT COUNT(distinct(order_date)) as visited_days ,s.customer_id FROM  dbo.sales as s
+SELECT COUNT(DISTINCT order_date) as customer_visit_after_memrbership,
+s.customer_id
+FROM dbo.sales as s
+join 
+dbo.members as me
+on s.customer_id = me.customer_id
+where order_date >join_date
 GROUP BY s.customer_id
-order by s.customer_id;
 
-OUTPUT:
-visited_days	customer_id
-4	A
-6	B
-2	C
+#OUTPUT:
+customer_visit_before_membership	customer_id
+2	A
+3	B
 
-# Problem statement -3:
+
+#PROBLEM STATEMENT-3
+How much Money spend by customer before getting membership?
+
+with a_cte as(
+  SELECT
+s.product_id,order_date,s.customer_id
+FROM dbo.sales as s
+join 
+dbo.members as me
+on s.customer_id = me.customer_id
+Where order_date< join_date)
+SELECT 
+SUM(e.price) as customer_spend_money_before_membership,customer_id
+FROM 
+a_cte as a
+join
+dbo.menu as e
+on a.product_id =e.product_id
+GROUP BY customer_id
+
+#OUTPUT
+
+customer_spend_money_before_membership	customer_id
+40	B
+25	A
+
+# PROBLEM STATEMENT-4
+How much money spend by customer after getting membership?
+
+with a_cte as(
+  SELECT
+s.product_id,order_date,s.customer_id
+FROM dbo.sales as s
+join 
+dbo.members as me
+on s.customer_id = me.customer_id
+Where order_date> join_date)
+SELECT 
+SUM(e.price) as customer_spend_money_before_membership,customer_id
+FROM 
+a_cte as a
+join
+dbo.menu as e
+on a.product_id =e.product_id
+GROUP BY customer_id
+
+#OUTPUT:
+customer_spend_money_before_membership	customer_id
+34	B
+36	A
+
+# Problem statement -5:
 What was the first item from the menu purchased by each customer?
 
     WITH a_cte as(
@@ -64,11 +118,23 @@ A	sushi
 B	curry
 C	ramen
 
+#PROBLEM STATEMENT-6
+What's the price of products?
 
-#Problem statement -4:
+SELECT product_name,price
+FROM dbo.menu
+
+#OUTPUT:
+product_name	price
+sushi	10
+curry	15
+ramen	12
+
+
+#Problem statement -7:
 What is the most purchased item on the menu and how many times was it purchased by all customers?
 
-OUTPUT:
+
        SELECT count(s.product_id) as most_purchased,e.product_name,s.product_id
 FROM dbo.sales as s
 join
@@ -78,7 +144,12 @@ GROUP BY e.product_name,s.product_id
 order by most_purchased desc
 LIMIT 1
 
-#Problem statement -5:
+# OUTPUT:
+most_purchased	product_name	product_id
+8	ramen	3
+
+
+#Problem statement -8:
 Which item was the most popular one for each customer?
 
      with a_cte as
@@ -103,7 +174,35 @@ most_purchased	product_name	customer_id
 2	ramen	B
 3	ramen	C
 
-# PROBLEM STATEMENT -6
+
+
+#Problem statement-9:
+Which item was purchased right before the customer became a member?
+
+with a_cte as(
+SELECT s.product_id,s.order_date,s.customer_id,
+DENSE_RANK() OVER (PARTITION BY s.customer_id ORDER BY s.order_date desc) as rank
+FROM dbo.sales as s
+join
+dbo.members as e
+on s.customer_id=e.customer_id
+where s.order_date < e.join_date
+order by s.customer_id,s.product_id desc )
+SELECT order_date,customer_id,me.product_name
+FROM a_cte
+join
+dbo.menu as me
+on a_cte.product_id=me.product_id
+where rank=1
+
+#OUTPUT:
+order_date	customer_id	product_name
+2021-01-01T00:00:00.000Z	A	curry
+2021-01-01T00:00:00.000Z	A	sushi
+2021-01-04T00:00:00.000Z	B	sushi
+
+
+# PROBLEM STATEMENT -10
 Which item was purchased first by the customer after they became a member?
 
 with a_cte as(
@@ -128,30 +227,16 @@ order_date	customer_id	product_name
 2021-02-01T00:00:00.000Z	B	ramen
 
 
-#Problem statement-7:
-Which item was purchased right before the customer became a member?
+# INSIGHTS:
+After getting membership customer visit has increased and spending money on his Restaurant has also increased.
+customers favourite dish of his Restaurant is ramen.
 
-with a_cte as(
-SELECT s.product_id,s.order_date,s.customer_id,
-DENSE_RANK() OVER (PARTITION BY s.customer_id ORDER BY s.order_date desc) as rank
-FROM dbo.sales as s
-join
-dbo.members as e
-on s.customer_id=e.customer_id
-where s.order_date < e.join_date
-order by s.customer_id,s.product_id desc )
-SELECT order_date,customer_id,me.product_name
-FROM a_cte
-join
-dbo.menu as me
-on a_cte.product_id=me.product_id
-where rank=1
+# SUGGESTION:-
+sushi and curry is less saled dish  of his Restaurant so He should give some extra points on sushi and curry 
+so customer's fastly achieved criteria of getting membership.
 
-#OUTPUT:
-order_date	customer_id	product_name
-2021-01-01T00:00:00.000Z	A	curry
-2021-01-01T00:00:00.000Z	A	sushi
-2021-01-04T00:00:00.000Z	B	sushi
+#CONCLUSION:
+Membership Program is Proftable for his Restaurant.😊
 
 
 
